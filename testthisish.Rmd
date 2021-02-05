@@ -1,0 +1,49 @@
+---
+title: "test it"
+author: "Theresa Alexander"
+date: "2/5/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r cars}
+load("~/Downloads/sincell_with_class_5cl.RData")
+
+library("scran")
+library("scater")
+library("igraph")
+library("Rtsne")
+library("stats")
+library("mclust")
+library("ggplot2")
+library("gridExtra")
+library("irlba")
+library("MASS")
+library("klaR")
+library("dplyr")
+```
+
+
+```{r}
+#scran normalize
+sce_sc_10x_5cl_qc <- computeSumFactors(sce_sc_10x_5cl_qc)
+sce_sc_10x_5cl_qc <- logNormCounts(sce_sc_10x_5cl_qc)
+
+#get variable genes
+stats <- scran::modelGeneVar(logcounts(sce_sc_10x_5cl_qc))
+var.features <- scran::getTopHVGs(stats, n = 3000)
+
+#PCA reduction
+sce_sc_10x_5cl_qc <- runPCA(sce_sc_10x_5cl_qc)
+
+```
+
+
+```{r}
+
+```
+
