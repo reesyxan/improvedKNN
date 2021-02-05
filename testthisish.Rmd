@@ -27,6 +27,79 @@ library("klaR")
 library("dplyr")
 ```
 
+# Helper functions
+```{r}
+getSNN <- function(data.use,
+                   k.param = 10,
+                   prune.SNN = 1/15,
+                   set.seed = FALSE) {
+  data.use <- as.matrix(data.use)
+  n.obs <- nrow(x = data.use)
+  
+  if (n.obs < k.param) {
+    warning(
+      "k.param set larger than number of cells. Setting k.param to number of cells - 1.",
+      call. = FALSE
+    )
+    k.param <- n.obs - 1
+  }
+  
+  ## TODO: refactor this to avoid code duplication
+  if (!is.numeric(set.seed)){
+    
+    SNN_igraph <- scran::buildKNNGraph(
+      data.use,
+      k = k.param,
+      transposed = TRUE)
+    snn.matrix <- similarity(
+      SNN_igraph,
+      method = "jaccard")
+    
+    snn.matrix[snn.matrix < 1/15] <- 0
+    rownames(x = snn.matrix) <- rownames(x = data.use)
+    colnames(x = snn.matrix) <- rownames(x = data.use)
+    
+    snn.graph <- graph_from_adjacency_matrix(snn.matrix, weighted = TRUE, mode = "undirected")
+    return(snn.graph)
+    
+  } else if (is.numeric(set.seed)){
+    set.seed(set.seed)
+    
+    SNN_igraph <- scran::buildKNNGraph(
+      data.use,
+      k = k.param,
+      transposed = TRUE)
+    snn.matrix <- similarity(
+      SNN_igraph,
+      method = "jaccard")
+    
+    snn.matrix[snn.matrix < 1/15] <- 0
+    rownames(x = snn.matrix) <- rownames(x = data.use)
+    colnames(x = snn.matrix) <- rownames(x = data.use)
+    
+    snn.graph <- graph_from_adjacency_matrix(snn.matrix, weighted = TRUE, mode = "undirected")
+    return(snn.graph)
+  }
+}
+
+get_walktrapClusters <- function(embedding, c.param = NA){  
+  snn <- getSNN(data.use = embedding, set.seed = 11)
+  set.seed(11)
+  if (!is.na(c.param)){
+  walktrapClusters <- suppressWarnings(igraph::cluster_walktrap(snn))
+  maxmodclust <- igraph::cut_at(walktrapClusters, n = c.param)
+  } else {
+      modularity <- c(0)
+      for (i in 2:15){
+        walktrapClusters <- suppressWarnings(igraph::cluster_walktrap(snn))
+        modularity <- c(modularity,  modularity(snn, suppressWarnings(igraph::cut_at(walktrapClusters, n = i))))
+      }
+      maxmodclust <- igraph::cut_at(walktrapClusters, n = which.max(modularity)+1)
+  }
+  return(maxmodclust)
+}
+```
+
 
 ```{r}
 #scran normalize
@@ -38,12 +111,55 @@ stats <- scran::modelGeneVar(logcounts(sce_sc_10x_5cl_qc))
 var.features <- scran::getTopHVGs(stats, n = 3000)
 
 #PCA reduction
-sce_sc_10x_5cl_qc <- runPCA(sce_sc_10x_5cl_qc)
+sce_sc_10x_5cl_qc <- runPCA(sce_sc_10x_5cl_qc, subset = var.features)
 
+
+set.seed(123)
+sce10x_5cl_tsne <- Rtsne(reducedDim(sce_sc_10x_5cl_qc,"PCA")[,1:10])
+
+Cell_line <- sce_sc_10x_5cl_qc$cell_line_demuxlet
+
+#plot tsne dims
+ggplot(as.data.frame(sce10x_5cl_tsne$Y), aes(x = sce10x_5cl_tsne$Y[,1], y = sce10x_5cl_tsne$Y[,2], col=Cell_line)) + 
+  geom_point() +
+  theme_classic() +
+  ggtitle("sc_10x 5 Cell Lines") +
+  xlab("TSNE 1") +
+  ylab("TSNE 2") 
 ```
 
 
 ```{r}
+latentdim <- reducedDim(sce_sc_10x_5cl_qc,"PCA")[,1:10]
+datadim <- logcounts(sce_sc_10x_5cl_qc)[var.features,]
 
+```
+
+
+#Cluster in latent space
+
+```{r}
+latentclustering <- get_walktrapClusters(latentdim)
+
+#plot tsne dims
+ggplot(as.data.frame(sce10x_5cl_tsne$Y), aes(x = sce10x_5cl_tsne$Y[,1], y = sce10x_5cl_tsne$Y[,2], col= as.factor(latentclustering))) + 
+  geom_point() +
+  theme_classic() +
+  ggtitle("sc_10x 5 Cell Lines") +
+  xlab("TSNE 1") +
+  ylab("TSNE 2") 
+```
+
+#cluster in data space
+```{r}
+dataclustering <- get_walktrapClusters(t(datadim))
+
+#plot tsne dims
+ggplot(as.data.frame(sce10x_5cl_tsne$Y), aes(x = sce10x_5cl_tsne$Y[,1], y = sce10x_5cl_tsne$Y[,2], col= as.factor(dataclustering))) + 
+  geom_point() +
+  theme_classic() +
+  ggtitle("sc_10x 5 Cell Lines") +
+  xlab("TSNE 1") +
+  ylab("TSNE 2") 
 ```
 
