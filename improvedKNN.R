@@ -1,27 +1,44 @@
 
+k = 10
 ## datadim with rows samples and cols genes
 ## latentdim with rows samples and cols genes
-
 improvedKNN <- function(dataclustering, latentclustering, datadim, latentdim, k){
-  
+ dim(datadim)
+  dim(latentdim)
   #get distance matrices for each input data
-  distdata <- dist(datadim)
-  distlatent <- dist(latentdim)
+  distdata <- as.matrix(dist(datadim))
+  distlatent <- as.matrix(dist(latentdim))
   
   #rank each row's neighbors
-  rankdata <- rank(distdata)
+  rankdata <- apply(distdata, 1, rank)
+  ranklatent <- apply(distlatent, 1, rank)
+
+
+  #find k nearest neighors for each sample (columns are NN's for that sample)
+  dataNN <- apply(rankdata, 2, function(x) {names(x[which(x %in% 2:(k+1))])})
+  latentNN <- apply(ranklatent, 2, function(x) {names(x[which(x %in% 2:(k+1))])})
+
   
-  #find k nearest neighrs for each sample
+  #calculate sum of the distance between each point and it's kNN (hk, gk)
+  #hk sums
+  hk <- c()
+  for (i in 1:ncol(dataNN)){
+    hki <- sum(distdata[dataNN[,i], dataNN[,i]])
+    hk <- c(hk, hki)
+  }
   
+  #gk sums
+  gk <- c()
+  for (i in 1:ncol(latentNN)){
+    gki <- sum(distlatent[latentNN[,i], latentNN[,i]])
+    gk <- c(gk, gki)
+  }
+
   
-  #find each point's k nearest neighbors for each input clustering point
+  #subset hk's and gk's into c cluster groups
+  n <- length(unique(dataclustering))
+  nc <- length(unique(latentclustering))
   
-  #calculate sum of the distance between each point and it's kNN (hk)
-  
-  
-  #find each point's k nearest neighbors for each latent clustering point
-  
-  #calculate sum of the distance between each point and it's kNN (gk)
   
   
   #so we should have k number of hk metrics and k number of gk's (one distance metric for each cluster)
