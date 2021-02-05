@@ -22,6 +22,8 @@ improvedKNN <- function(dataclustering, latentclustering, datadim, latentdim, k)
   #calculate sum of the distance between each point and it's kNN (hk, gk)
   #hk sums
   hk <- c()
+  
+  #TODO: there's a better way to do this loop but haven't figured out how
   for (i in 1:ncol(dataNN)){
     hki <- sum(distdata[dataNN[,i], dataNN[,i]])
     hk <- c(hk, hki)
@@ -29,6 +31,8 @@ improvedKNN <- function(dataclustering, latentclustering, datadim, latentdim, k)
   
   #gk sums
   gk <- c()
+  
+  #TODO: there's a better way to do this loop but haven't figured out how
   for (i in 1:ncol(latentNN)){
     gki <- sum(distlatent[latentNN[,i], latentNN[,i]])
     gk <- c(gk, gki)
@@ -36,14 +40,8 @@ improvedKNN <- function(dataclustering, latentclustering, datadim, latentdim, k)
 
   
   #subset hk's and gk's into c cluster groups
-  n <- length(unique(dataclustering))
-  nc <- length(unique(latentclustering))
-  
-  
-  
-  #so we should have k number of hk metrics and k number of gk's (one distance metric for each cluster)
-  
-  
+  n <- length(latentclustering)
+  nc <- table(latentclustering)
   
   
   #sum over k's for (gk - hk)/# clusters k
