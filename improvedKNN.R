@@ -14,10 +14,16 @@ improvedKNN <- function(groundtruth, datadim, latentdim, k, distdata, distlatent
   ranklatent <- apply(distlatent, 1, rank)
 
 
+  colnames(rankdata) <- rownames(datadim)
+  colnames(ranklatent) <- rownames(latentdim)
+  
+  rownames(rankdata) <- rownames(datadim)
+  rownames(ranklatent) <- rownames(latentdim)
+
   #find k nearest neighors for each sample (columns are NN's for that sample)
   dataNN <- apply(rankdata, 2, function(x) {names(x[which(x %in% 2:(k+1))])})
   latentNN <- apply(ranklatent, 2, function(x) {names(x[which(x %in% 2:(k+1))])})
-
+  
   dataNNmat <- matrix(0, ncol = length(rownames(rankdata)), nrow = length(rownames(rankdata)))
   rownames(dataNNmat) <- rownames(rankdata)
   colnames(dataNNmat) <- colnames(rankdata)
@@ -26,11 +32,14 @@ improvedKNN <- function(groundtruth, datadim, latentdim, k, distdata, distlatent
   rownames(latentNNmat) <- rownames(rankdata)
   colnames(latentNNmat) <- colnames(rankdata)
 
+
+ 
   #make NN matrix for original data and latent
   for (i in 1:dim(dataNN)[2]){
     dataNNmat[dataNN[,i],i] <- 1
   }
 
+ i = 1
   for (i in 1:dim(latentNN)[2]){
     latentNNmat[latentNN[,i],i] <- 1
   }
@@ -73,6 +82,6 @@ improvedKNN <- function(groundtruth, datadim, latentdim, k, distdata, distlatent
     improvedKNN <- c(improvedKNN, part)
   }
 
-  improvedKNN <- sum(improvedKNN)
+  improvedKNN <- sum(improvedKNN)/length(groundtruth)
   return(improvedKNN)
 }
