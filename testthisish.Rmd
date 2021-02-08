@@ -3,11 +3,13 @@ title: "test it"
 author: "Theresa Alexander"
 date: "2/5/2021"
 output:
+  word_document:
+    toc: yes
   html_document:
-    theme: readable
     highlight: kate
-    toc: true
-    number_sections: true
+    number_sections: yes
+    theme: readable
+    toc: yes
 ---
 
 ```{r setup, include=FALSE}
@@ -15,9 +17,10 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 
-```{r cars}
+```{r echo=FALSE}
 load("~/Downloads/sincell_with_class_5cl.RData")
 
+source("~/Desktop/improvedKNN/improvedKNN.R")
 library("scran")
 library("scater")
 library("igraph")
@@ -44,7 +47,7 @@ stats <- scran::modelGeneVar(logcounts(sce_sc_10x_5cl_qc))
 var.features <- scran::getTopHVGs(stats, n = 3000)
 
 #PCA reduction
-sce_sc_10x_5cl_qc <- runPCA(sce_sc_10x_5cl_qc, subset = var.features)
+sce_sc_10x_5cl_qc <- runPCA(sce_sc_10x_5cl_qc, subset_row = var.features)
 
 #tsne of varfeatures(logcounts)
 sce10x_5cl_tsne_data <- Rtsne(t(logcounts(sce_sc_10x_5cl_qc)[var.features,]))
@@ -62,12 +65,6 @@ ggplot(as.data.frame(sce10x_5cl_tsne_data$Y), aes(x = sce10x_5cl_tsne_data$Y[,1]
 ```
 
 
-```{r}
-latentdim <- reducedDim(sce_sc_10x_5cl_qc,"PCA")[,1:10]
-datadim <- t(logcounts(sce_sc_10x_5cl_qc)[var.features,])
-```
-
-
 #Cluster in latent space
 
 ```{r}
@@ -75,7 +72,7 @@ datadim <- t(logcounts(sce_sc_10x_5cl_qc)[var.features,])
 groundtruth <- sce_sc_10x_5cl_qc$cell_line
 
 set.seed(123)
-sce10x_5cl_tsne <- Rtsne(reducedDim(sce_sc_10x_5cl_qc,"PCA", subset = var.features)[,1:10])
+sce10x_5cl_tsne <- Rtsne(reducedDim(sce_sc_10x_5cl_qc,"PCA")[,1:10])
 
 #plot tsne dims
 ggplot(as.data.frame(sce10x_5cl_tsne$Y), aes(x = sce10x_5cl_tsne$Y[,1], y = sce10x_5cl_tsne$Y[,2], col= Cell_line)) + 
@@ -89,31 +86,184 @@ ggplot(as.data.frame(sce10x_5cl_tsne$Y), aes(x = sce10x_5cl_tsne$Y[,1], y = sce1
 
 # Test over different K's
 ```{r}
+#original data
+sce10x_5cl_origdata <- t(logcounts(sce_sc_10x_5cl_qc)[var.features,])
+
+#PCA 
+sce10x_5cl_PCA <- reducedDim(sce_sc_10x_5cl_qc,"PCA")[,1:10]
+
+#original data tsne
+sce10x_5cl_tsne <- sce10x_5cl_tsne_data$Y
+rownames(sce10x_5cl_tsne) <- rownames(sce10x_5cl_PCA)
+
+
+#tSNE of PCA
+sce10x_5cl_tsne_pca <- Rtsne(reducedDim(sce_sc_10x_5cl_qc,"PCA")[,1:10])$Y
+rownames(sce10x_5cl_tsne_pca) <- rownames(sce10x_5cl_PCA)
+
 #so we don't have to keep calculating this
-distdata <- as.matrix(dist(datadim))
-distlatent <- as.matrix(dist(latentdim))
-
-
-k10_improvedKNN <- improvedKNN(sce_sc_10x_5cl_qc$cell_line, datadim = datadim, latentdim = latentdim, k = 10, distdata = distdata, distlatent = distlatent)
-k20_improvedKNN <- improvedKNN(sce_sc_10x_5cl_qc$cell_line, datadim = datadim, latentdim = latentdim, k = 20, distdata = distdata, distlatent = distlatent)
-k30_improvedKNN <- improvedKNN(sce_sc_10x_5cl_qc$cell_line, datadim = datadim, latentdim = latentdim, k = 30, distdata = distdata, distlatent = distlatent)
-k40_improvedKNN <- improvedKNN(sce_sc_10x_5cl_qc$cell_line, datadim = datadim, latentdim = latentdim, k = 40, distdata = distdata, distlatent = distlatent)
-k50_improvedKNN <- improvedKNN(sce_sc_10x_5cl_qc$cell_line, datadim = datadim, latentdim = latentdim, k = 50, distdata = distdata, distlatent = distlatent)
-k60_improvedKNN <- improvedKNN(sce_sc_10x_5cl_qc$cell_line, datadim = datadim, latentdim = latentdim, k = 60, distdata = distdata, distlatent = distlatent)
-k70_improvedKNN <- improvedKNN(sce_sc_10x_5cl_qc$cell_line, datadim = datadim, latentdim = latentdim, k = 70, distdata = distdata, distlatent = distlatent)
-k80_improvedKNN <- improvedKNN(sce_sc_10x_5cl_qc$cell_line, datadim = datadim, latentdim = latentdim, k = 80, distdata = distdata, distlatent = distlatent)
-k90_improvedKNN <- improvedKNN(sce_sc_10x_5cl_qc$cell_line, datadim = datadim, latentdim = latentdim, k = 90, distdata = distdata, distlatent = distlatent)
-k100_improvedKNN <- improvedKNN(sce_sc_10x_5cl_qc$cell_line, datadim = datadim, latentdim = latentdim, k = 100, distdata = distdata, distlatent = distlatent)
+distdata <- as.matrix(dist(sce10x_5cl_origdata))
+distPCA <- as.matrix(dist(sce10x_5cl_PCA))
+disttSNE <- as.matrix(dist(sce10x_5cl_tsne))
+distSNEPCA <- as.matrix(dist(sce10x_5cl_tsne_pca))
 
 
 
-improvedKNNs <- c(k10_improvedKNN, k20_improvedKNN, k30_improvedKNN, k40_improvedKNN, k50_improvedKNN, k60_improvedKNN, k70_improvedKNN, k80_improvedKNN, k90_improvedKNN, k100_improvedKNN)
+k10_improvedKNN_origdata_tsne <- improvedKNN(sce_sc_10x_5cl_qc$cell_line, datadim = sce10x_5cl_origdata, latentdim = sce10x_5cl_tsne, k = 10, distdata = distdata, distlatent = disttSNE)
+k20_improvedKNN_origdata_tsne <- improvedKNN(sce_sc_10x_5cl_qc$cell_line, datadim = sce10x_5cl_origdata, latentdim = sce10x_5cl_tsne, k = 20, distdata = distdata, distlatent = disttSNE)
+k30_improvedKNN_origdata_tsne <- improvedKNN(sce_sc_10x_5cl_qc$cell_line, datadim = sce10x_5cl_origdata, latentdim = sce10x_5cl_tsne, k = 30, distdata = distdata, distlatent = disttSNE)
+k40_improvedKNN_origdata_tsne <- improvedKNN(sce_sc_10x_5cl_qc$cell_line, datadim = sce10x_5cl_origdata, latentdim = sce10x_5cl_tsne, k = 40, distdata = distdata, distlatent = disttSNE)
+k50_improvedKNN_origdata_tsne <- improvedKNN(sce_sc_10x_5cl_qc$cell_line, datadim = sce10x_5cl_origdata, latentdim = sce10x_5cl_tsne, k = 50, distdata = distdata, distlatent = disttSNE)
+k60_improvedKNN_origdata_tsne <- improvedKNN(sce_sc_10x_5cl_qc$cell_line, datadim = sce10x_5cl_origdata, latentdim = sce10x_5cl_tsne, k = 60, distdata = distdata, distlatent = disttSNE)
+k70_improvedKNN_origdata_tsne <- improvedKNN(sce_sc_10x_5cl_qc$cell_line, datadim = sce10x_5cl_origdata, latentdim = sce10x_5cl_tsne, k = 70, distdata = distdata, distlatent = disttSNE)
+k80_improvedKNN_origdata_tsne <- improvedKNN(sce_sc_10x_5cl_qc$cell_line, datadim = sce10x_5cl_origdata, latentdim = sce10x_5cl_tsne, k = 80, distdata = distdata, distlatent = disttSNE)
+k90_improvedKNN_origdata_tsne <- improvedKNN(sce_sc_10x_5cl_qc$cell_line, datadim = sce10x_5cl_origdata, latentdim = sce10x_5cl_tsne, k = 90, distdata = distdata, distlatent = disttSNE)
+k100_improvedKNN_origdata_tsne <- improvedKNN(sce_sc_10x_5cl_qc$cell_line, datadim = sce10x_5cl_origdata, latentdim = sce10x_5cl_tsne, k = 100, distdata = distdata, distlatent = disttSNE)
 
-ggplot(data.frame(k = seq(10,100, by = 10), improvedKNN = improvedKNNs), aes(x = as.factor(k), y = improvedKNN)) + 
-  geom_point()+
+
+
+k10_improvedKNN_origdata_pca <- improvedKNN(sce_sc_10x_5cl_qc$cell_line, datadim = sce10x_5cl_origdata, latentdim = sce10x_5cl_PCA, k = 10, distdata = distdata, distlatent = distPCA)
+k20_improvedKNN_origdata_pca <- improvedKNN(sce_sc_10x_5cl_qc$cell_line, datadim = sce10x_5cl_origdata, latentdim = sce10x_5cl_PCA, k = 20, distdata = distdata, distlatent = distPCA)
+k30_improvedKNN_origdata_pca <- improvedKNN(sce_sc_10x_5cl_qc$cell_line, datadim = sce10x_5cl_origdata, latentdim = sce10x_5cl_PCA, k = 30, distdata = distdata, distlatent = distPCA)
+k40_improvedKNN_origdata_pca <- improvedKNN(sce_sc_10x_5cl_qc$cell_line, datadim = sce10x_5cl_origdata, latentdim = sce10x_5cl_PCA, k = 40, distdata = distdata, distlatent = distPCA)
+k50_improvedKNN_origdata_pca <- improvedKNN(sce_sc_10x_5cl_qc$cell_line, datadim = sce10x_5cl_origdata, latentdim = sce10x_5cl_PCA, k = 50, distdata = distdata, distlatent = distPCA)
+k60_improvedKNN_origdata_pca <- improvedKNN(sce_sc_10x_5cl_qc$cell_line, datadim = sce10x_5cl_origdata, latentdim = sce10x_5cl_PCA, k = 60, distdata = distdata, distlatent = distPCA)
+k70_improvedKNN_origdata_pca <- improvedKNN(sce_sc_10x_5cl_qc$cell_line, datadim = sce10x_5cl_origdata, latentdim = sce10x_5cl_PCA, k = 70, distdata = distdata, distlatent = distPCA)
+k80_improvedKNN_origdata_pca <- improvedKNN(sce_sc_10x_5cl_qc$cell_line, datadim = sce10x_5cl_origdata, latentdim = sce10x_5cl_PCA, k = 80, distdata = distdata, distlatent = distPCA)
+k90_improvedKNN_origdata_pca <- improvedKNN(sce_sc_10x_5cl_qc$cell_line, datadim = sce10x_5cl_origdata, latentdim = sce10x_5cl_PCA, k = 90, distdata = distdata, distlatent = distPCA)
+k100_improvedKNN_origdata_pca <- improvedKNN(sce_sc_10x_5cl_qc$cell_line, datadim = sce10x_5cl_origdata, latentdim = sce10x_5cl_PCA, k = 100, distdata = distdata, distlatent = distPCA)
+
+
+
+k10_improvedKNN_origdata_tsnepca <- improvedKNN(sce_sc_10x_5cl_qc$cell_line, datadim = sce10x_5cl_origdata, latentdim = sce10x_5cl_tsne_pca, k = 10, distdata = distdata, distlatent = distSNEPCA)
+k20_improvedKNN_origdata_tsnepca <- improvedKNN(sce_sc_10x_5cl_qc$cell_line, datadim = sce10x_5cl_origdata, latentdim = sce10x_5cl_tsne_pca, k = 20, distdata = distdata, distlatent = distSNEPCA)
+k30_improvedKNN_origdata_tsnepca <- improvedKNN(sce_sc_10x_5cl_qc$cell_line, datadim = sce10x_5cl_origdata, latentdim = sce10x_5cl_tsne_pca, k = 30, distdata = distdata, distlatent = distSNEPCA)
+k40_improvedKNN_origdata_tsnepca <- improvedKNN(sce_sc_10x_5cl_qc$cell_line, datadim = sce10x_5cl_origdata, latentdim = sce10x_5cl_tsne_pca, k = 40, distdata = distdata, distlatent = distSNEPCA)
+k50_improvedKNN_origdata_tsnepca <- improvedKNN(sce_sc_10x_5cl_qc$cell_line, datadim = sce10x_5cl_origdata, latentdim = sce10x_5cl_tsne_pca, k = 50, distdata = distdata, distlatent = distSNEPCA)
+k60_improvedKNN_origdata_tsnepca <- improvedKNN(sce_sc_10x_5cl_qc$cell_line, datadim = sce10x_5cl_origdata, latentdim = sce10x_5cl_tsne_pca, k = 60, distdata = distdata, distlatent = distSNEPCA)
+k70_improvedKNN_origdata_tsnepca <- improvedKNN(sce_sc_10x_5cl_qc$cell_line, datadim = sce10x_5cl_origdata, latentdim = sce10x_5cl_tsne_pca, k = 70, distdata = distdata, distlatent = distSNEPCA)
+k80_improvedKNN_origdata_tsnepca <- improvedKNN(sce_sc_10x_5cl_qc$cell_line, datadim = sce10x_5cl_origdata, latentdim = sce10x_5cl_tsne_pca, k = 80, distdata = distdata, distlatent = distSNEPCA)
+k90_improvedKNN_origdata_tsnepca <- improvedKNN(sce_sc_10x_5cl_qc$cell_line, datadim = sce10x_5cl_origdata, latentdim = sce10x_5cl_tsne_pca, k = 90, distdata = distdata, distlatent = distSNEPCA)
+k100_improvedKNN_origdata_tsnepca <- improvedKNN(sce_sc_10x_5cl_qc$cell_line, datadim = sce10x_5cl_origdata, latentdim = sce10x_5cl_tsne_pca, k = 100, distdata = distdata, distlatent = distSNEPCA)
+
+
+
+k10_improvedKNN_PCA_tsne <- improvedKNN(sce_sc_10x_5cl_qc$cell_line, datadim = sce10x_5cl_PCA, latentdim = sce10x_5cl_tsne, k = 10, distdata = distPCA, distlatent = disttSNE)
+k20_improvedKNN_PCA_tsne <- improvedKNN(sce_sc_10x_5cl_qc$cell_line, datadim = sce10x_5cl_PCA, latentdim = sce10x_5cl_tsne, k = 20, distdata = distPCA, distlatent = disttSNE)
+k30_improvedKNN_PCA_tsne <- improvedKNN(sce_sc_10x_5cl_qc$cell_line, datadim = sce10x_5cl_PCA, latentdim = sce10x_5cl_tsne, k = 30, distdata = distPCA, distlatent = disttSNE)
+k40_improvedKNN_PCA_tsne <- improvedKNN(sce_sc_10x_5cl_qc$cell_line, datadim = sce10x_5cl_PCA, latentdim = sce10x_5cl_tsne, k = 40, distdata = distPCA, distlatent = disttSNE)
+k50_improvedKNN_PCA_tsne <- improvedKNN(sce_sc_10x_5cl_qc$cell_line, datadim = sce10x_5cl_PCA, latentdim = sce10x_5cl_tsne, k = 50, distdata = distPCA, distlatent = disttSNE)
+k60_improvedKNN_PCA_tsne <- improvedKNN(sce_sc_10x_5cl_qc$cell_line, datadim = sce10x_5cl_PCA, latentdim = sce10x_5cl_tsne, k = 60, distdata = distPCA, distlatent = disttSNE)
+k70_improvedKNN_PCA_tsne <- improvedKNN(sce_sc_10x_5cl_qc$cell_line, datadim = sce10x_5cl_PCA, latentdim = sce10x_5cl_tsne, k = 70, distdata = distPCA, distlatent = disttSNE)
+k80_improvedKNN_PCA_tsne <- improvedKNN(sce_sc_10x_5cl_qc$cell_line, datadim = sce10x_5cl_PCA, latentdim = sce10x_5cl_tsne, k = 80, distdata = distPCA, distlatent = disttSNE)
+k90_improvedKNN_PCA_tsne <- improvedKNN(sce_sc_10x_5cl_qc$cell_line, datadim = sce10x_5cl_PCA, latentdim = sce10x_5cl_tsne, k = 90, distdata = distPCA, distlatent = disttSNE)
+k100_improvedKNN_PCA_tsne <- improvedKNN(sce_sc_10x_5cl_qc$cell_line, datadim = sce10x_5cl_PCA, latentdim = sce10x_5cl_tsne, k = 100, distdata = distPCA, distlatent = disttSNE)
+
+
+k10_improvedKNN_PCA_tsnepca <- improvedKNN(sce_sc_10x_5cl_qc$cell_line, datadim = sce10x_5cl_PCA, latentdim = sce10x_5cl_tsne_pca, k = 10, distdata = distPCA, distlatent = distSNEPCA)
+k20_improvedKNN_PCA_tsnepca <- improvedKNN(sce_sc_10x_5cl_qc$cell_line, datadim = sce10x_5cl_PCA, latentdim = sce10x_5cl_tsne_pca, k = 20, distdata = distPCA, distlatent = distSNEPCA)
+k30_improvedKNN_PCA_tsnepca <- improvedKNN(sce_sc_10x_5cl_qc$cell_line, datadim = sce10x_5cl_PCA, latentdim = sce10x_5cl_tsne_pca, k = 30, distdata = distPCA, distlatent = distSNEPCA)
+k40_improvedKNN_PCA_tsnepca <- improvedKNN(sce_sc_10x_5cl_qc$cell_line, datadim = sce10x_5cl_PCA, latentdim = sce10x_5cl_tsne_pca, k = 40, distdata = distPCA, distlatent = distSNEPCA)
+k50_improvedKNN_PCA_tsnepca <- improvedKNN(sce_sc_10x_5cl_qc$cell_line, datadim = sce10x_5cl_PCA, latentdim = sce10x_5cl_tsne_pca, k = 50, distdata = distPCA, distlatent = distSNEPCA)
+k60_improvedKNN_PCA_tsnepca <- improvedKNN(sce_sc_10x_5cl_qc$cell_line, datadim = sce10x_5cl_PCA, latentdim = sce10x_5cl_tsne_pca, k = 60, distdata = distPCA, distlatent = distSNEPCA)
+k70_improvedKNN_PCA_tsnepca <- improvedKNN(sce_sc_10x_5cl_qc$cell_line, datadim = sce10x_5cl_PCA, latentdim = sce10x_5cl_tsne_pca, k = 70, distdata = distPCA, distlatent = distSNEPCA)
+k80_improvedKNN_PCA_tsnepca <- improvedKNN(sce_sc_10x_5cl_qc$cell_line, datadim = sce10x_5cl_PCA, latentdim = sce10x_5cl_tsne_pca, k = 80, distdata = distPCA, distlatent = distSNEPCA)
+k90_improvedKNN_PCA_tsnepca <- improvedKNN(sce_sc_10x_5cl_qc$cell_line, datadim = sce10x_5cl_PCA, latentdim = sce10x_5cl_tsne_pca, k = 90, distdata = distPCA, distlatent = distSNEPCA)
+k100_improvedKNN_PCA_tsnepca <- improvedKNN(sce_sc_10x_5cl_qc$cell_line, datadim = sce10x_5cl_PCA, latentdim = sce10x_5cl_tsne_pca, k = 100, distdata = distPCA, distlatent = distSNEPCA)
+
+
+
+k10_improvedKNN_tsne_tsnepca <- improvedKNN(sce_sc_10x_5cl_qc$cell_line, datadim = sce10x_5cl_tsne, latentdim = sce10x_5cl_tsne_pca, k = 10, distdata = disttSNE, distlatent = distSNEPCA)
+k20_improvedKNN_tsne_tsnepca <- improvedKNN(sce_sc_10x_5cl_qc$cell_line, datadim = sce10x_5cl_tsne, latentdim = sce10x_5cl_tsne_pca, k = 20, distdata = disttSNE, distlatent = distSNEPCA)
+k30_improvedKNN_tsne_tsnepca <- improvedKNN(sce_sc_10x_5cl_qc$cell_line, datadim = sce10x_5cl_tsne, latentdim = sce10x_5cl_tsne_pca, k = 30, distdata = disttSNE, distlatent = distSNEPCA)
+k40_improvedKNN_tsne_tsnepca <- improvedKNN(sce_sc_10x_5cl_qc$cell_line, datadim = sce10x_5cl_tsne, latentdim = sce10x_5cl_tsne_pca, k = 40, distdata = disttSNE, distlatent = distSNEPCA)
+k50_improvedKNN_tsne_tsnepca <- improvedKNN(sce_sc_10x_5cl_qc$cell_line, datadim = sce10x_5cl_tsne, latentdim = sce10x_5cl_tsne_pca, k = 50, distdata = disttSNE, distlatent = distSNEPCA)
+k60_improvedKNN_tsne_tsnepca <- improvedKNN(sce_sc_10x_5cl_qc$cell_line, datadim = sce10x_5cl_tsne, latentdim = sce10x_5cl_tsne_pca, k = 60, distdata = disttSNE, distlatent = distSNEPCA)
+k70_improvedKNN_tsne_tsnepca <- improvedKNN(sce_sc_10x_5cl_qc$cell_line, datadim = sce10x_5cl_tsne, latentdim = sce10x_5cl_tsne_pca, k = 70, distdata = disttSNE, distlatent = distSNEPCA)
+k80_improvedKNN_tsne_tsnepca <- improvedKNN(sce_sc_10x_5cl_qc$cell_line, datadim = sce10x_5cl_tsne, latentdim = sce10x_5cl_tsne_pca, k = 80, distdata = disttSNE, distlatent = distSNEPCA)
+k90_improvedKNN_tsne_tsnepca <- improvedKNN(sce_sc_10x_5cl_qc$cell_line, datadim = sce10x_5cl_tsne, latentdim = sce10x_5cl_tsne_pca, k = 90, distdata = disttSNE, distlatent = distSNEPCA)
+k100_improvedKNN_tsne_tsnepca <- improvedKNN(sce_sc_10x_5cl_qc$cell_line, datadim = sce10x_5cl_tsne, latentdim = sce10x_5cl_tsne_pca, k = 100, distdata = disttSNE, distlatent = distSNEPCA)
+
+
+improvedKNNs <- data.frame(K =  c("K=10", "K=20", "K=30","K=40", "K=50","K=60", "K=70", "K=80", "K=90", "K=100"),
+                           origdata_tsne = c(k10_improvedKNN_origdata_tsne, 
+                                             k20_improvedKNN_origdata_tsne, 
+                                             k30_improvedKNN_origdata_tsne, 
+                                             k40_improvedKNN_origdata_tsne, 
+                                             k50_improvedKNN_origdata_tsne, 
+                                             k60_improvedKNN_origdata_tsne, 
+                                             k70_improvedKNN_origdata_tsne, 
+                                             k80_improvedKNN_origdata_tsne, 
+                                             k90_improvedKNN_origdata_tsne, 
+                                             k100_improvedKNN_origdata_tsne),
+                           origdata_pca = c(k10_improvedKNN_origdata_pca, 
+                                             k20_improvedKNN_origdata_pca, 
+                                             k30_improvedKNN_origdata_pca, 
+                                             k40_improvedKNN_origdata_pca, 
+                                             k50_improvedKNN_origdata_pca, 
+                                             k60_improvedKNN_origdata_pca, 
+                                             k70_improvedKNN_origdata_pca, 
+                                             k80_improvedKNN_origdata_pca, 
+                                             k90_improvedKNN_origdata_pca, 
+                                             k100_improvedKNN_origdata_pca),
+                           origdata_tsnepca = c(k10_improvedKNN_origdata_tsnepca, 
+                                             k20_improvedKNN_origdata_tsnepca, 
+                                             k30_improvedKNN_origdata_tsnepca, 
+                                             k40_improvedKNN_origdata_tsnepca, 
+                                             k50_improvedKNN_origdata_tsnepca, 
+                                             k60_improvedKNN_origdata_tsnepca, 
+                                             k70_improvedKNN_origdata_tsnepca, 
+                                             k80_improvedKNN_origdata_tsnepca, 
+                                             k90_improvedKNN_origdata_tsnepca, 
+                                             k100_improvedKNN_origdata_tsnepca),
+                           pca_tsne = c(k10_improvedKNN_PCA_tsne, 
+                                             k20_improvedKNN_PCA_tsne, 
+                                             k30_improvedKNN_PCA_tsne, 
+                                             k40_improvedKNN_PCA_tsne, 
+                                             k50_improvedKNN_PCA_tsne, 
+                                             k60_improvedKNN_PCA_tsne, 
+                                             k70_improvedKNN_PCA_tsne, 
+                                             k80_improvedKNN_PCA_tsne, 
+                                             k90_improvedKNN_PCA_tsne, 
+                                             k100_improvedKNN_PCA_tsne),
+                           pca_tsnepca = c(k10_improvedKNN_PCA_tsnepca, 
+                                             k20_improvedKNN_PCA_tsnepca, 
+                                             k30_improvedKNN_PCA_tsnepca, 
+                                             k40_improvedKNN_PCA_tsnepca, 
+                                             k50_improvedKNN_PCA_tsnepca, 
+                                             k60_improvedKNN_PCA_tsnepca, 
+                                             k70_improvedKNN_PCA_tsnepca, 
+                                             k80_improvedKNN_PCA_tsnepca, 
+                                             k90_improvedKNN_PCA_tsnepca, 
+                                             k100_improvedKNN_PCA_tsnepca),
+                           tsne_tsnepca = c(k10_improvedKNN_tsne_tsnepca, 
+                                             k20_improvedKNN_tsne_tsnepca, 
+                                             k30_improvedKNN_tsne_tsnepca, 
+                                             k40_improvedKNN_tsne_tsnepca, 
+                                             k50_improvedKNN_tsne_tsnepca, 
+                                             k60_improvedKNN_tsne_tsnepca, 
+                                             k70_improvedKNN_tsne_tsnepca, 
+                                             k80_improvedKNN_tsne_tsnepca, 
+                                             k90_improvedKNN_tsne_tsnepca, 
+                                             k100_improvedKNN_tsne_tsnepca))
+
+rownames(improvedKNNs) <- c("K=10", "K=20", "K=30","K=40", "K=50","K=60", "K=70", "K=80", "K=90", "K=100")
+
+library(dplyr)
+
+p <- improvedKNNs %>%
+  mutate(K = factor(K, levels=c("K=10", "K=20", "K=30","K=40", "K=50","K=60", "K=70", "K=80", "K=90", "K=100"))) %>%
+  ggplot(aes(x=K, y=origdata_tsne)) +
+  geom_point(aes(x = K, y = origdata_tsne, col = "OrigData vs. tSNE")) +
+  geom_point(aes(x = K, y = origdata_pca, col = "OrigData vs. PCA")) +
+  geom_point(aes(x = K, y = origdata_tsnepca, col = "OrigData vs. PCA+tSNE")) +
+  geom_point(aes(x = K, y = pca_tsne, col = "PCA vs. tSNE")) +
+  geom_point(aes(x = K, y = pca_tsnepca, col = "PCA vs. PCA+tSNE")) +
+  geom_point(aes(x = K, y = tsne_tsnepca, col = "tSNE vs. PCA+tSNE")) +
   theme_classic() +
   xlab("number of neighbors (k)") +
-  ylab("improvedKNN")
+  ylab("improvedKNN") 
 
+p
 ```
 
